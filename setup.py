@@ -1,5 +1,4 @@
 from setuptools import setup, find_packages
-
 setup(
     name="melkorvision",
     version="1.0",
@@ -13,7 +12,7 @@ setup(
     # the package that are prerequisites
     packages=find_packages(),
     package_data={
-        '':['melkor_logic'],
-        'bandwidth_reporter':['melkor_engine']
+        '':['melkorvision'],
+        'bandwidth_reporter':['melkorvision']
                },
 )
