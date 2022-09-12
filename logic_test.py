@@ -30,26 +30,6 @@ def make_testcase(b,n):
     return inputs,outputs
 
 tc_in,tc_out = make_testcase(B,N)
-print(tc_out)
-"""
-P = torch.zeros([b,1])
-Q = torch.zeros([b,N,3])
-R = torch.zeros([b,N,N,1])
-# if the condition P is wrong, then it is wrong
-make_p(P,0,0,0);make_p(P,1,0,0)
-make_p(P,2,0,0);make_p(P,3,0,0)
-make_p(P,4,0,0);make_p(P,5,0,0)
-make_p(P,6,0,1);make_p(P,7,0,1)
-make_p(P,8,0,1);make_p(P,9,0,1)
-make_p(P,10,0,1);make_p(P,11,0,1)
-# if any 0 or 1 term of Q is correct, then it is correct
-make_q(Q,0)
-
-tc = [
-    P,Q,R
-] # in the test case 1, no relational logic are included
-"""
-
 
 bgr = torch.zeros([B,N,N,1])
 
@@ -68,14 +48,13 @@ for epoch in range(50):
     plt.scatter(range(p.shape[0]),p.detach())
     plt.pause(0.01)
 
-print(p.reshape([-1]))
-print(tc_out.reshape([-1]))
 
-ttc_in,ttc_out = make_testcase(100,50)
+ttc_in,ttc_out = make_testcase(120,50)
 p,_,_ = net(*ttc_in)
 print("start the test case:")
 print(ttc_out.reshape([-1]))
 print((0.5+p).reshape([-1]).int())
+plt.cla()
 plt.ioff()
 plt.cla()
 plt.scatter(range(ttc_out.shape[0]),ttc_out)
