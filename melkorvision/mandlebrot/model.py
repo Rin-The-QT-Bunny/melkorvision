@@ -8,6 +8,8 @@ from torch_sparse import coalesce
 
 from abc import ABC, abstractmethod
 
+device = "cuda:0" if torch.cuda.is_available else "cpu"
+
 class AffinityAggregation(nn.Module):
     def __init__(self):
         super().__init__()
