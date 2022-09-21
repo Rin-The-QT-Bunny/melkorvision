@@ -79,4 +79,30 @@ class AffinityAggregation(nn.Module):
 
 
 
-print()
+class P2AffinityAggregation(AffinityAggregation):
+    def __init__(self,node_feature_dim,v2=3.5):
+        super().__init__()
+        self.v2 = v2
+        self.node_pair_vae = VAE(in_features = 2 * node_feature_dim)
+
+    # we assume the difference between nodes are close to each other
+
+    def forward(self,x,row,col):
+        # affinities as function of vae reconstruction of node pairs
+        vae_outputs = self.node_pair_vae(torch.cat([x[row],x[col]],dim=1))
+        recon_loss,kl_loss = vae_outputs["recon_loss"],vae_outputs["kl_loss"]
+        edge_affinities = 1 / (1 + self.v2 * recon_loss)
+
+        losses = {"recon_loss":recon_loss.mean(),"kl_loss":kl_loss.mean()}
+    
+        return edge_affinities,0.5,losses
+
+class P1AffinityAggregation(AffinityAggregation):
+    def forward(self,x,row,col):
+        # Norm of difference for every node pair on grid
+        # similarity calculated with no grad
+        edge_affinities = torch.linalg.norm(x[row]-x[col],dim=1).to(x.device)
+        inv_mean_affinities = 1/scatter_mean(edge_affinities,row.to(x.device))
+        affinity_thresh  = torch.min(inv_mean_affinities[row],inv_mean_affinities[col])
+
+        return edge_affinities,affinity_thresh,{} 
