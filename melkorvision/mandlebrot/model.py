@@ -14,10 +14,12 @@ from abc import ABC, abstractmethod
 device = "cuda:0" if torch.cuda.is_available else "cpu"
 
 class PropModel(nn.Module):
-    def __init__(self):
-        self.prop = None
-    def forward(self):
-        return 0
+    def __init__(self,iters = 10,alpha = 0.9):
+        self.prop = LabelPropagation(iters,alpha)
+
+    @staticmethod
+    def forward(self,nodes,edge_index):
+        return self.prop(nodes,edge_index)
 
 class AffinityAggregation(nn.Module):
     def __init__(self):
