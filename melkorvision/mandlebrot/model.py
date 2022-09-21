@@ -14,6 +14,8 @@ from abc import ABC, abstractmethod
 device = "cuda:0" if torch.cuda.is_available else "cpu"
 
 class PropModel(nn.Module):
+    prop = LabelPropagation(10,0.8)
+
     def __init__(self,iters = 10,alpha = 0.9):
         self.prop = LabelPropagation(iters,alpha)
 
@@ -41,9 +43,8 @@ class AffinityAggregation(nn.Module):
                                         num_nodes = x.size(0))[0].to(device)
         
         # Coarsen graph with filtered adj. list to produce next level's nodes
-        node_labels = None
+        node_labels = PropModel(filtered_edges_index)
+        
 
-layers = 10
-alpha = .9
 
-prop = LabelPropagation(layers,0.9)
+print()
