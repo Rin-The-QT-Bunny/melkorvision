@@ -88,12 +88,12 @@ class SlotAttention(nn.Module):
             nn.ReLU(inplace = True),
             nn.Linear(hidden_dim,slot_dim)
         )
-        self.to_res_bg = nn.Sequential([
+        self.to_res_bg = nn.Sequential(
             nn.LayerNorm(slot_dim),
             nn.Linear(slot_dim,hidden_dim),
             nn.ReLU(inplace=True),
             nn.Linear(hidden_dim,slot_dim)
-        ])
+        )
         self.norm_feat = nn.LayerNorm(in_dim)
         self.slot_dim = slot_dim
 
@@ -111,7 +111,7 @@ class SlotAttention(nn.Module):
         slot_fg = mu + sigma * torch.randn_like(mu)
         mu_bg = self.slots_mu_bg.expand([B,1,-1])
         sigma_bg = self.slots_logvars_bg.exp().expand([B,1,-1])
-        slot_bg = mu + sigma_bg * torch.randn(mu_bg)
+        slot_bg = mu + sigma_bg * torch.randn_like(mu_bg)
 
         feat = self.norm_feat(feat)
         k = self.to_k(feat)
@@ -157,3 +157,9 @@ encoder = Encoder(3)
 outputs = encoder(inputs)
 
 print(outputs.shape)
+
+inputs = torch.randn([3,100,64])
+slat = SlotAttention(8)
+slots,attn = slat(inputs)
+
+print(slots.shape,attn.shape)
