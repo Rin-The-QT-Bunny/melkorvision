@@ -2,10 +2,13 @@
 import torch
 import torch.nn as nn
 
-from torch_geometric.nn import max_pool_x
-from torch_geometric.utils import add_self_loops
+from torch_geometric.nn import max_pool_x,GraphConv
+from torch_geometric.data import Data,Batch
+from torch_geometric.utils import add_self_loops,grid,to_dense_batch
 from torch_scatter import scatter_mean
 from torch_sparse import coalesce
+
+from types import SimpleNamespace
 
 from torch_geometric.nn.models import LabelPropagation
 
@@ -106,3 +109,71 @@ class P1AffinityAggregation(AffinityAggregation):
         affinity_thresh  = torch.min(inv_mean_affinities[row],inv_mean_affinities[col])
 
         return edge_affinities,affinity_thresh,{} 
+
+class PSGNetLite(nn.Module):
+    def __init__(self,imsize):
+        super().__init__()
+        
+        node_feature_dim = 32
+        num_graph_layer = 2
+
+        self.spatial_edges,self.spatial_coords = grid(imsize,imsize,device=device)
+
+        self.rdn = []
+
+        # Affinity modules: for now there is just P1 and P2 net
+        self.affinity_aggregations = torch.nn.ModuleList([
+            P1AffinityAggregation(),P2AffinityAggregation(node_feature_dim)
+        ])
+
+        # Node tranforms: function applied on aggregated node vectors
+        self.node_transforms = torch.nn.ModuleList([
+            FCBlock(132,2,in_features=node_feature_dim,features=node_feature_dim)
+        ])
+
+        # Graph convolutional layers to apply after each graph coarsening
+        self.graph_convs = torch.nn.ModuleList([
+            GraphConv(node_feature_dim,node_feature_dim)
+            for _ in range(len(self.affinity_aggregations))
+        ])
+
+        # The render of the final output nodes
+        self.node_to_rgb = FCBlock(132,4,node_feature_dim,3)
+
+    def forward(self,img):
+        # Collect image features with rdn
+        im_features = self.rdn(img.permute([0,3,1,2]))
+
+        coords_added_im_feats = torch.cat([
+            self.spatial_coords.unsqueeze(0).repeat(im_features.size(0),1,1),
+            im_features.flatten(2,3).permute(0,2,1)
+        ],dim=2)
+
+        ### Rum image feature graph through affinity modules
+        graph_in = Batch.from_data_list([
+            Data(x,self.spatial_edges) for x in coords_added_im_feats
+        ])
+
+        x, edge_index, batch = graph_in.x, graph_in.edge_index, graph_in.batch
+
+        clusters,all_losses = [],[] # clusters used only for decoration
+
+        for pool, conv, transf in zip(self.affinity_aggregations,
+                                      self.graph_convs, self.node_transforms):
+            batch_uncoarsened = batch
+
+            x, edge_index, batch, cluster, losses = pool(x, edge_index, batch)
+            x = conv(x, edge_index)
+            x = transf(x)
+
+            clusters.append( (cluster, batch_uncoarsened) )
+            all_losses.append(losses)
+
+        # Render into image (just constant coloring from each cluster for now)
+        # First map each node to pixel and then uncluster pixels
+
+        nodes_rgb = self.node_to_rgb(x)
+        img_out   = nodes_rgb
+        for cluster,_ in reversed(clusters): img_out = img_out[cluster]
+
+        return to_dense_batch(img_out,graph_in.batch)[0], clusters, all_losses
