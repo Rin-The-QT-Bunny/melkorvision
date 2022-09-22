@@ -66,34 +66,36 @@ class SlotAttention(nn.Module):
         self.eps = eps
         self.scale = slot_dim ** -0.5
 
-        self.slots_mu = nn.Parameter(torch.randn([1,1,slot_dim]))
-        self.slots_logvars = nn.Parameter(torch.randn([1,1,slot_dim]))
-        nn.init.xavier_uniform_(self.slots_logvars)
-        self.slots_mu_bg = nn.Parameter(torch.randn([1,1,slot_dim]))
-        self.slots_logvars_bg = nn.Parameter(torch.randn([1,1,slot_dim]))
-        nn.init.xavier_uniform_(self.slots_logvars_bg)
+        self.slots_mu = nn.Parameter(torch.randn(1, 1, slot_dim))
+        self.slots_logsigma = nn.Parameter(torch.zeros(1, 1, slot_dim))
+        nn.init.xavier_uniform_(self.slots_logsigma)
+        self.slots_mu_bg = nn.Parameter(torch.randn(1, 1, slot_dim))
+        self.slots_logsigma_bg = nn.Parameter(torch.zeros(1, 1, slot_dim))
+        nn.init.xavier_uniform_(self.slots_logsigma_bg)
 
-        self.to_k = nn.Linear(in_dim,slot_dim,bias=False)
-        self.to_v = nn.Linear(in_dim,slot_dim,bias=False)
+        self.to_k = nn.Linear(in_dim, slot_dim, bias=False)
+        self.to_v = nn.Linear(in_dim, slot_dim, bias=False)
         self.to_q = nn.Sequential(nn.LayerNorm(slot_dim), nn.Linear(slot_dim, slot_dim, bias=False))
         self.to_q_bg = nn.Sequential(nn.LayerNorm(slot_dim), nn.Linear(slot_dim, slot_dim, bias=False))
-        
-        self.gru = nn.GRUCell(slot_dim,slot_dim)
-        self.gru_bg = nn.GRUCell(slot_dim,slot_dim)
 
-        hidden_dim = max(slot_dim,hidden_dim)
+        self.gru = nn.GRUCell(slot_dim, slot_dim)
+        self.gru_bg = nn.GRUCell(slot_dim, slot_dim)
+
+        hidden_dim = max(slot_dim, hidden_dim)
+
         self.to_res = nn.Sequential(
             nn.LayerNorm(slot_dim),
-            nn.Linear(slot_dim,hidden_dim),
-            nn.ReLU(inplace = True),
-            nn.Linear(hidden_dim,slot_dim)
+            nn.Linear(slot_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, slot_dim)
         )
         self.to_res_bg = nn.Sequential(
             nn.LayerNorm(slot_dim),
-            nn.Linear(slot_dim,hidden_dim),
+            nn.Linear(slot_dim, hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim,slot_dim)
+            nn.Linear(hidden_dim, slot_dim)
         )
+
         self.norm_feat = nn.LayerNorm(in_dim)
         self.slot_dim = slot_dim
 
