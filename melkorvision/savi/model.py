@@ -319,18 +319,20 @@ slots,attn = slat(inputs)
 
 print(slots.shape,attn.shape)
 
-
 print("start the decoder part:")
 
 inputs  = torch.randn([1,3,128,128])
 model   = AutoEncoder()
 outputs   = model(inputs)
 
-print("### start the training session")
+print("### start the training session ###")
 import time
 time.sleep(100)
 
 ### start the training session
+
+device = "cpu"
+
 import datetime
 import random
 
@@ -350,9 +352,6 @@ train_loader = torch.utils.data.Dataloader(train_set,batch_size = 2,shuffle=True
 
 optimizer = torch.optim.Adam(model.parameters(),lr=2e-4)
 
-device = "cpu"
-
-import time
 start = time.time()
 warmup_step = 5000
 model_dir = "model.ckpt"
