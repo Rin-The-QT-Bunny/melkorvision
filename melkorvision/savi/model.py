@@ -100,18 +100,18 @@ class SlotAttention(nn.Module):
     def forward(self,feat,num_slots = None):
         """
         input:
-            feat: visual feature with position information, [B,N,C]
-        output:
-            slots: [B,K,C], attn: [B,K,N]
+            feat: visual feature with position information, BxNxC
+        output: slots: BxKxC, attn: BxKxN
         """
-        B,_,_ = feat.shape
+        B, _, _ = feat.shape
         K = num_slots if num_slots is not None else self.num_slots
-        mu = self.slots_mu.expand(B,K-1,-1)
-        sigma = self.slots_logvars.exp().expand(B,K-1,-1)
+
+        mu = self.slots_mu.expand(B, K-1, -1)
+        sigma = self.slots_logsigma.exp().expand(B, K-1, -1)
         slot_fg = mu + sigma * torch.randn_like(mu)
-        mu_bg = self.slots_mu_bg.expand([B,1,-1])
-        sigma_bg = self.slots_logvars_bg.exp().expand([B,1,-1])
-        slot_bg = mu + sigma_bg * torch.randn_like(mu_bg)
+        mu_bg = self.slots_mu_bg.expand(B, 1, -1)
+        sigma_bg = self.slots_logsigma_bg.exp().expand(B, 1, -1)
+        slot_bg = mu_bg + sigma_bg * torch.randn_like(mu_bg)
 
         feat = self.norm_feat(feat)
         k = self.to_k(feat)
