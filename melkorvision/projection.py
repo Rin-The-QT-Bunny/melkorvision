@@ -48,3 +48,27 @@ class Projection(object):
         z_unnorm_pix = z_cam
         pixel_coor = torch.stack([x_unnorm_pix,y_unnorm_pix,z_unnorm_pix,torch.ones_like(x_unnorm_pix)])
         return pixel_coor
+    
+    def construct_sampling_coor(self,cam2world,partitioned = False):
+        """
+        construct a sampling frustum coor in NSS space, and geneate z_val/ray_dir
+        input:
+            cam2world: Nx4x4, N: #images to render
+        output:
+            frus_nss_coor: (NxDxHxW) x 3
+            z_vals: (NxHxW) x D
+            ray_dir: (N,H,W) x 3 
+        """
+        N = cam2world.shape[0]
+        W, H, D = self.frustum_size
+
+        pixel_coor = self.construct_frus_coor()
+        frus_cam_coor = torch.matmul(self.spixel2cam,pixel_coor.float()) # 4x(WxHxD)
+
+        frus_world_coor = torch.matmul(cam2world,frus_cam_coor)      # Nx4x(WxHxD)
+        frus_nss_coor   = torch.matmul(self.world2nss,frus_cam_coor) # Nx4x(WxHxD)
+        frus_nss_coor   = frus_nss_coor.view(N,4,W,H,D).permute([0,4,3,2,1]) # NxDxHxWx4
+        frus_nss_coor   = frus_nss_coor[...,:3] # NxDxHxWx3
+        scale = H // self.render_size[0]
+        if partitioned:
+            frus_nss_coor_ = []
