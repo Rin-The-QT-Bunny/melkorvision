@@ -98,4 +98,21 @@ class Projection(object):
         x = torch.arange(self.frsutum_size[0])
         y = torch.arange(self.frustum_size[1])
         
-        X,Y = torch.meshgrid([X,Y])
+        X,Y = torch.meshgrid([x,y])
+        Z = torch.ones_like(X)
+
+        pix_coor = torch.stack([X,Y,Z].to(self.device)) # 3xHxW, 3 = xyz
+        cam_coor = torch.matmul(self.spixel2cam[:3,:3],pix_coor.flatten(start_dim=1).float()) # 3x(HxW)
+        ray_dir  = cam_coor.permute([1,0]) # (HxW)x3
+        ray_dir = ray_dir.view(H, W, 3)
+        if partitioned:
+            ray_dir = ray_dir.expand(N, H, W, 3)
+            ray_dir_ = []
+            for i in range(scale ** 2):
+                h, w = divmod(i, scale)
+                ray_dir_.append(ray_dir[:, h::scale, w::scale, :])
+            ray_dir = torch.stack(ray_dir_, dim=0)  # 4xNx(H/s)x(W/s)x3
+            ray_dir = ray_dir.flatten(start_dim=1, end_dim=3)  # 4x(Nx(H/s)x(W/s))x3
+        else:
+            ray_dir = ray_dir.expand(N, H, W, 3).flatten(start_dim=0, end_dim=2)  # (NxHxW)x3
+        return frus_nss_coor, z_vals, ray_dir
