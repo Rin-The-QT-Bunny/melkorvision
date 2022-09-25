@@ -73,3 +73,23 @@ class Projection(object):
         scale = H // self.render_size[0]
         if partitioned:
             frus_nss_coor_ = []
+            for i in range(scale ** 2):
+                h, w = divmod(i,scale)
+                frus_nss_coor_.append(frus_nss_coor[:,:,h::scale,w::scale,:])
+            frus_nss_coor = torch.stack(frus_nss_coor_,dim=0) #4xNxDx(H/s)x(W/s)x3
+            frus_nss_coor = frus_nss_coor.flatten(start_dim=1,end_dim=4) # 4x(NxDx(H/s)x(W/s)x3)
+        else:
+            frus_nss_coor = frus_nss_coor.flatten(start_dim=0,end_dim=3) # (NxDxHxW)x3
+            
+        z_vals = (frus_cam_coor[2] - self.near) / (self.far - self.near)  # (WxHxD) range=[0,1]
+        z_vals = z_vals.expand(N, W * H * D)  # Nx(WxHxD)
+        if partitioned:
+            z_vals = z_vals.view(N, W, H, D).permute([0, 2, 1, 3])  # NxHxWxD
+            z_vals_ = []
+            for i in range(scale**2):
+                h, w = divmod(i, scale)
+                z_vals_.append(z_vals[:, h::scale, w::scale, :])
+            z_vals = torch.stack(z_vals_, dim=0)  # 4xNx(H/s)x(W/s)xD
+            z_vals = z_vals.flatten(start_dim=1, end_dim=3)  # 4x(Nx(H/s)x(W/s))xD
+        else:
+            z_vals = z_vals.view(N, W, H, D).permute([0, 2, 1, 3]).flatten(start_dim=0, end_dim=2)  # (NxHxW)xD
